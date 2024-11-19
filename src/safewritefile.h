@@ -22,9 +22,9 @@ along with Mod Organizer.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "dllimport.h"
 #include "utility.h"
-#include <QList>
+#include <QCryptographicHash>
+#include <QSaveFile>
 #include <QString>
-#include <QTemporaryFile>
 
 namespace MOBase
 {
@@ -38,7 +38,7 @@ class QDLLEXPORT SafeWriteFile
 public:
   SafeWriteFile(const QString& fileName);
 
-  QFile* operator->();
+  qint64 write(const QByteArray& data);
 
   void commit();
 
@@ -49,7 +49,8 @@ private:
 
 private:
   QString m_FileName;
-  QTemporaryFile m_TempFile;
+  QSaveFile m_SaveFile;
+  QCryptographicHash m_Hash;
 };
 
 }  // namespace MOBase

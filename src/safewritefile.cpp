@@ -20,47 +20,44 @@ along with Mod Organizer.  If not, see <http://www.gnu.org/licenses/>.
 #include "safewritefile.h"
 #include "log.h"
 #include <QCryptographicHash>
-#include <QList>
 #include <QStorageInfo>
 #include <QString>
 
 namespace MOBase
 {
 
-SafeWriteFile::SafeWriteFile(const QString& fileName) : m_FileName(fileName)
+SafeWriteFile::SafeWriteFile(const QString& fileName)
+    : m_FileName(fileName), m_SaveFile(fileName), m_Hash(QCryptographicHash::Md5)
 {
-  if (!m_TempFile.open()) {
+  if (!m_SaveFile.open(QIODevice::WriteOnly)) {
     const auto av =
         static_cast<double>(QStorageInfo(QDir::tempPath()).bytesAvailable());
 
     log::error("failed to create temporary file for '{}', error {} ('{}'), "
                "temp path is '{}', {:.3f}GB available",
-               m_FileName, m_TempFile.error(), m_TempFile.errorString(),
+               m_FileName, m_SaveFile.error(), m_SaveFile.errorString(),
                QDir::tempPath(), (av / 1024 / 1024 / 1024));
 
     QString errorMsg =
         QObject::tr(
             "Failed to save '%1', could not create a temporary file: %2 (error %3)")
             .arg(m_FileName)
-            .arg(m_TempFile.errorString())
-            .arg(m_TempFile.error());
+            .arg(m_SaveFile.errorString())
+            .arg(m_SaveFile.error());
 
     throw Exception(errorMsg);
   }
 }
 
-QFile* SafeWriteFile::operator->()
+qint64 SafeWriteFile::write(const QByteArray& data)
 {
-  Q_ASSERT(m_TempFile.isOpen());
-  return &m_TempFile;
+  m_Hash.addData(data);
+  return m_SaveFile.write(data);
 }
 
 void SafeWriteFile::commit()
 {
-  shellDeleteQuiet(m_FileName);
-  m_TempFile.rename(m_FileName);
-  m_TempFile.setAutoRemove(false);
-  m_TempFile.close();
+  m_SaveFile.commit();
 }
 
 bool SafeWriteFile::commitIfDifferent(QByteArray& inHash)
@@ -77,12 +74,7 @@ bool SafeWriteFile::commitIfDifferent(QByteArray& inHash)
 
 QByteArray SafeWriteFile::hash()
 {
-
-  qint64 pos = m_TempFile.pos();
-  m_TempFile.seek(0);
-  QByteArray data = m_TempFile.readAll();
-  m_TempFile.seek(pos);
-  return QCryptographicHash::hash(data, QCryptographicHash::Md5);
+  return m_Hash.result();
 }
 
 }  // namespace MOBase
