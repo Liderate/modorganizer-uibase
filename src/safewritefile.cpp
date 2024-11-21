@@ -19,7 +19,6 @@ along with Mod Organizer.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "safewritefile.h"
 #include "log.h"
-#include <QCryptographicHash>
 #include <QStorageInfo>
 #include <QString>
 
@@ -27,16 +26,15 @@ namespace MOBase
 {
 
 SafeWriteFile::SafeWriteFile(const QString& fileName)
-    : m_FileName(fileName), m_SaveFile(fileName), m_Hash(QCryptographicHash::Md5)
+    : m_FileName(fileName), m_SaveFile(fileName)
 {
   if (!m_SaveFile.open(QIODevice::WriteOnly)) {
-    const auto av =
-        static_cast<double>(QStorageInfo(QDir::tempPath()).bytesAvailable());
+    const auto av = static_cast<double>(QStorageInfo(m_FileName).bytesAvailable());
 
-    log::error("failed to create temporary file for '{}', error {} ('{}'), "
-               "temp path is '{}', {:.3f}GB available",
-               m_FileName, m_SaveFile.error(), m_SaveFile.errorString(),
-               QDir::tempPath(), (av / 1024 / 1024 / 1024));
+    log::error(
+        "failed to create temporary file for '{}', error {} ('{}'), {:.3f}GB available",
+        m_FileName, m_SaveFile.error(), m_SaveFile.errorString(),
+        (av / 1024 / 1024 / 1024));
 
     QString errorMsg =
         QObject::tr(
@@ -49,32 +47,10 @@ SafeWriteFile::SafeWriteFile(const QString& fileName)
   }
 }
 
-qint64 SafeWriteFile::write(const QByteArray& data)
+QSaveFile* SafeWriteFile::operator->()
 {
-  m_Hash.addData(data);
-  return m_SaveFile.write(data);
-}
-
-void SafeWriteFile::commit()
-{
-  m_SaveFile.commit();
-}
-
-bool SafeWriteFile::commitIfDifferent(QByteArray& inHash)
-{
-  QByteArray newHash = hash();
-  if (newHash != inHash || !QFile::exists(m_FileName)) {
-    commit();
-    inHash = newHash;
-    return true;
-  } else {
-    return false;
-  }
-}
-
-QByteArray SafeWriteFile::hash()
-{
-  return m_Hash.result();
+  Q_ASSERT(m_SaveFile.isOpen());
+  return &m_SaveFile;
 }
 
 }  // namespace MOBase

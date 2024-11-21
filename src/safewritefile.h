@@ -22,35 +22,24 @@ along with Mod Organizer.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "dllimport.h"
 #include "utility.h"
-#include <QCryptographicHash>
 #include <QSaveFile>
 #include <QString>
 
 namespace MOBase
 {
-
 /**
- * @brief a wrapper for QFile that ensures the file is only actually (over-)written if
- * writing was successful
+ * @brief a wrapper for QSaveFile to handle error logging when the file fails to open
  */
 class QDLLEXPORT SafeWriteFile
 {
 public:
   SafeWriteFile(const QString& fileName);
 
-  qint64 write(const QByteArray& data);
-
-  void commit();
-
-  bool commitIfDifferent(QByteArray& hash);
+  QSaveFile* operator->();
 
 private:
-  QByteArray hash();
-
-private:
-  QString m_FileName;
+  const QString m_FileName;
   QSaveFile m_SaveFile;
-  QCryptographicHash m_Hash;
 };
 
 }  // namespace MOBase
